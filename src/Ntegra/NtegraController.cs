@@ -12,7 +12,8 @@ public class NtegraController : IDisposable
 		_client = tcpClient;
 		_userCode = new UserCode(userCode);
 	}
-
+	public async Task<BitArray> GetZonesViolations()	{		var result = await _client.SendCommand(Command.ZonesViolation);
+		return new BitArray(result.Skip(1).ToArray());	}
 	public async Task<BitArray> GetOutputsState()
 	{
 		var result = await _client.SendCommand(Command.OutputsState);

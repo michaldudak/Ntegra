@@ -30,6 +30,7 @@ public static class Program
 					break;				case 's':
 					var outputs = await controller.GetOutputsState();
 					PrintOutputs(outputs);
+					break;				case 'z':					var zones = await controller.GetZonesViolations();					PrintOutputs(zones);
 					break;
 				case 't':
 					var temp = await controller.GetZoneTemperature(51);					if (!temp.HasValue)
