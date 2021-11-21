@@ -6,7 +6,7 @@ namespace Ntegra;
 public class NtegraTcpClient : IDisposable
 {
 	private readonly TcpClient _tcpClient;
-	private Stream? _stream;
+	private NetworkStream? _stream;
 
 	public NtegraTcpClient(string address, int port)
 	{
@@ -37,7 +37,7 @@ public class NtegraTcpClient : IDisposable
 	{
 		var receiveBuffer = new byte[100];
 		var attempt = 0;
-		int readBytes;
+		int readBytes = 0;
 		do
 		{
 			attempt++;
@@ -68,15 +68,13 @@ public class NtegraTcpClient : IDisposable
 			if (_stream == null || !_tcpClient.Connected)
 			{
 				OpenConnection();
-			}
-
+			}
 			await _stream.WriteAsync(sendBuffer.ToArray().AsMemory(0, sendBuffer.Count));
-
-			readBytes = _stream.Read(receiveBuffer, 0, 100);
+			if (_stream.CanRead)			{				readBytes = await _stream.ReadAsync(receiveBuffer, 0, 100);			}
 		} while ((receiveBuffer[0] != receiveBuffer[1] || receiveBuffer[0] != 0xFE) && attempt < 3);
 
 		var response = new List<byte>();
-		for (var i = 3; i < readBytes - 4; i++)
+		for (var i = 2; i < readBytes - 4; i++)
 		{
 			response.Add(receiveBuffer[i]);
 			if (receiveBuffer[i] == 0xFE && receiveBuffer[i + 1] == 0xF0)
@@ -86,7 +84,7 @@ public class NtegraTcpClient : IDisposable
 		}
 
 		var sentChecksum = new Checksum(receiveBuffer[readBytes - 4], receiveBuffer[readBytes - 3]);
-		var calculatedChecksum = Checksum.Calculate((Command)receiveBuffer[2], response);
+		var calculatedChecksum = Checksum.Calculate(response);
 
 		if (sentChecksum != calculatedChecksum)
 		{

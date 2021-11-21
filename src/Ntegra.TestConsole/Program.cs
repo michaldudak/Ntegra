@@ -17,8 +17,6 @@ public static class Program
 		using var client = new NtegraTcpClient(address, port);
 		using var controller = new NtegraController(client, userCode);
 
-		var outputs = await controller.GetOutputsState();
-		PrintOutputs(outputs);
 
 		while (true)
 		{
@@ -29,6 +27,19 @@ public static class Program
 					break;
 				case '2':
 					await controller.SetOutputState(11, !await controller.GetOutputState(11));
+					break;				case 's':
+					var outputs = await controller.GetOutputsState();
+					PrintOutputs(outputs);
+					break;
+				case 't':
+					var temp = await controller.GetZoneTemperature(51);					if (!temp.HasValue)
+					{
+						Console.WriteLine("Temperature undetermined");						break;
+					}
+					Console.WriteLine($"Temperature: {temp.Value:F1}°C");
+					break;				case 'v':
+					var version = await controller.GetIntegraVersion();
+					Console.WriteLine(version.IntegraType.ToString());					Console.WriteLine(version.FirmwareVersion);					Console.WriteLine(version.Language.ToString());					Console.WriteLine("Settings stored in flash: " + version.SettingsStoredInFlash);
 					break;
 			}
 		}
@@ -38,8 +49,8 @@ public static class Program
 	{
 		var configurationBuilder = new ConfigurationBuilder();
 		configurationBuilder.SetBasePath(Directory.GetCurrentDirectory());
-		configurationBuilder.AddJsonFile("appsettings.json");
-		configurationBuilder.AddUserSecrets(Assembly.GetExecutingAssembly());
+		configurationBuilder.AddJsonFile("appsettings.json", optional: true);
+		configurationBuilder.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
 		configurationBuilder.AddCommandLine(args);
 
 		return configurationBuilder.Build();

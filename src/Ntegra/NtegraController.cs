@@ -1,6 +1,5 @@
 ﻿using System.Collections;
-
-namespace Ntegra;
+namespace Ntegra;
 
 public class NtegraController : IDisposable
 {
@@ -17,7 +16,7 @@ public class NtegraController : IDisposable
 	public async Task<BitArray> GetOutputsState()
 	{
 		var result = await _client.SendCommand(Command.OutputsState);
-		return new BitArray(result);
+		return new BitArray(result.Skip(1).ToArray());
 	}
 
 	public async Task<bool> GetOutputState(byte outputIndex)
@@ -61,7 +60,7 @@ public class NtegraController : IDisposable
 		bitArray.CopyTo(bytes, 0);
 		bytes = PrependUserCode(bytes);
 		await _client.SendCommand(Command.OutputsOff, bytes);
-	}
+	}	public async Task<IntegraVersion> GetIntegraVersion()	{		var result = await _client.SendCommand(Command.IntegraVersion);		return new IntegraVersion(result);	}	public async Task<decimal?> GetZoneTemperature(byte zoneIndex)	{		var result = await _client.SendCommand(Command.ReadZoneTemperature, zoneIndex);		if (result[0] != 0x7D || result[1] != zoneIndex || (result[2] == 0xFF && result[3] == 0xFF))		{			return null;		}		var reading = result[2] << 8 | result[3];		return reading / 2M - 55M;	}
 
 	private byte[] PrependUserCode(byte[] payload)
 	{
