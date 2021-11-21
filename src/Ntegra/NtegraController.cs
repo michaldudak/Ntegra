@@ -5,13 +5,13 @@ namespace Ntegra;
 public class NtegraController : IDisposable
 {
 	private readonly NtegraTcpClient _client;
-	private readonly byte[] _userCode;
+	private readonly UserCode _userCode;
 	private bool disposedValue;
 
 	public NtegraController(NtegraTcpClient tcpClient, string? userCode = null)
 	{
 		_client = tcpClient;
-		_userCode = ConvertUserCode(userCode);
+		_userCode = new UserCode(userCode);
 	}
 
 	public async Task<BitArray> GetOutputsState()
@@ -65,37 +65,7 @@ public class NtegraController : IDisposable
 
 	private byte[] PrependUserCode(byte[] payload)
 	{
-		return _userCode.Concat(payload).ToArray();
-	}
-
-	private byte[] ConvertUserCode(string? userCode)
-	{
-		var encoded = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-		if (userCode == null)
-		{
-			return encoded;
-		}
-
-		for (var i = 0; i < userCode.Length; i += 2)
-		{
-			encoded[i / 2] = (byte)(CharToNibble(userCode[i]) << 4);
-			if (i + 1 < userCode.Length)
-			{
-				encoded[i / 2] |= CharToNibble(userCode[i + 1]);
-			}
-		}
-
-		return encoded;
-	}
-
-	private static byte CharToNibble(char c)
-	{
-		if (!char.IsDigit(c))
-		{
-			throw new ArgumentException("Invalid user code. It must contain digits only.");
-		}
-
-		return (byte)(((byte)c) - 0x30);
+		return _userCode.AsBytes.Concat(payload).ToArray();
 	}
 
 	protected virtual void Dispose(bool disposing)
