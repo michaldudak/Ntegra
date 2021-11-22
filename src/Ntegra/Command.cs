@@ -9,4 +9,5 @@ public enum Command : byte
 	IntegraVersion = 0x7E,
 	OutputsOn = 0x88,
 	OutputsOff = 0x89,
+	ReadDeviceName = 0xEE,
 }

@@ -17,6 +17,8 @@ public static class Program
 		using var client = new NtegraTcpClient(address, port);
 		using var controller = new NtegraController(client, userCode);
 
+		Console.WriteLine("Connected.");
+
 		while (true)
 		{
 			var key = Console.ReadKey(true);
@@ -28,10 +30,19 @@ public static class Program
 			switch (key.KeyChar)
 			{
 				case '1':
-					await controller.SetOutputState(10, !await controller.GetOutputState(10));
+					await controller.SetOutputState(11, !await controller.GetOutputState(11));
 					break;
 				case '2':
-					await controller.SetOutputState(11, !await controller.GetOutputState(11));
+					await controller.SetOutputState(12, !await controller.GetOutputState(12));
+					break;
+				case '3':
+					await controller.SetOutputState(13, !await controller.GetOutputState(13));
+					break;
+				case '5':
+					await controller.SetOutputState(25, !await controller.GetOutputState(25));
+					break;
+				case '6':
+					await controller.SetOutputState(26, !await controller.GetOutputState(26));
 					break;
 				case 's':
 					var outputs = await controller.GetOutputsState();
@@ -64,6 +75,13 @@ public static class Program
 					Console.WriteLine("Serves 8 part troubles: " + commVersion.CanServeTroublesPart8);
 
 					break;
+				case 'o':
+					for (byte i = 1; i < 128; ++i)
+					{
+						var output = await controller.GetOutputDefinition(i);
+						Console.WriteLine($"{output.Number}: {output.Name} (fn {output.OutputFunction})");
+					}
+					break;
 			}
 		}
 	}
@@ -85,7 +103,7 @@ public static class Program
 		for (var i = 0; i < outputs.Count; ++i)
 		{
 			Console.ForegroundColor = outputs[i] ? ConsoleColor.Green : ConsoleColor.Red;
-			Console.Write(i.ToString().PadLeft(4, ' '));
+			Console.Write((i + 1).ToString().PadLeft(4, ' '));
 		}
 
 		Console.ForegroundColor = currentColor;

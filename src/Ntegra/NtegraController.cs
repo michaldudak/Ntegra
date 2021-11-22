@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Text;
 
 namespace Ntegra;
 
@@ -12,6 +13,7 @@ public class NtegraController : IDisposable
 	{
 		_client = tcpClient;
 		_userCode = new UserCode(userCode);
+		Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 	}
 
 	public async Task<BitArray> GetZonesViolations()
@@ -26,27 +28,37 @@ public class NtegraController : IDisposable
 		return new BitArray(result.Skip(1).ToArray());
 	}
 
-	public async Task<bool> GetOutputState(byte outputIndex)
+	public async Task<bool> GetOutputState(ushort outputNumber)
 	{
+		if (outputNumber == 0)
+		{
+			throw new ArgumentException("Output number cannot be 0");
+		}
+
 		var allOutputs = await GetOutputsState();
-		return allOutputs[outputIndex];
+		return allOutputs[outputNumber - 1];
 	}
-	public Task SetOutputState(int outputIndex, bool state)
+	public Task SetOutputState(ushort outputNumber, bool state)
 	{
 		if (state)
 		{
-			return SetOutputsOn(new[] { outputIndex });
+			return SetOutputsOn(new[] { outputNumber });
 		}
 
-		return SetOutputsOff(new[] { outputIndex });
+		return SetOutputsOff(new[] { outputNumber });
 	}
 
-	public async Task SetOutputsOn(IEnumerable<int> outputIndexes)
+	public async Task SetOutputsOn(IEnumerable<ushort> outputNumbers)
 	{
-		var bitArray = new BitArray(128, false);
-		foreach (var outputIndex in outputIndexes)
+		if (outputNumbers.Any(i => i == 0))
 		{
-			bitArray[outputIndex] = true;
+			throw new ArgumentException("Output number cannot be 0");
+		}
+
+		var bitArray = new BitArray(128, false);
+		foreach (var outputNumber in outputNumbers)
+		{
+			bitArray[outputNumber - 1] = true;
 		}
 
 		var bytes = new byte[16];
@@ -55,12 +67,17 @@ public class NtegraController : IDisposable
 		await _client.SendCommand(Command.OutputsOn, bytes);
 	}
 
-	public async Task SetOutputsOff(IEnumerable<int> outputIndexes)
+	public async Task SetOutputsOff(IEnumerable<ushort> outputNumbers)
 	{
-		var bitArray = new BitArray(128, false);
-		foreach (var outputIndex in outputIndexes)
+		if (outputNumbers.Any(i => i == 0))
 		{
-			bitArray[outputIndex] = true;
+			throw new ArgumentException("Output number cannot be 0");
+		}
+
+		var bitArray = new BitArray(128, false);
+		foreach (var outputNumber in outputNumbers)
+		{
+			bitArray[outputNumber - 1] = true;
 		}
 
 		var bytes = new byte[16];
@@ -91,6 +108,12 @@ public class NtegraController : IDisposable
 
 		var reading = result[2] << 8 | result[3];
 		return reading / 2M - 55M;
+	}
+
+	public async Task<OutputDefinition> GetOutputDefinition(byte outputIndex)
+	{
+		var result = await _client.SendCommand(Command.ReadDeviceName, 4, outputIndex);
+		return new OutputDefinition(result);
 	}
 
 	private byte[] PrependUserCode(byte[] payload)
