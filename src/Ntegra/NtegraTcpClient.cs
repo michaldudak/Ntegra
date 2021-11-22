@@ -5,11 +5,15 @@ namespace Ntegra;
 
 public class NtegraTcpClient : IDisposable
 {
-	private readonly TcpClient _tcpClient;
-	private readonly NetworkStream _stream;
+	private readonly string _address;
+	private readonly int _port;
+	private TcpClient _tcpClient;
+	private NetworkStream _stream;
 
 	public NtegraTcpClient(string address, int port)
 	{
+		_address = address;
+		_port = port;
 		_tcpClient = new TcpClient(address, port);
 		_stream = _tcpClient.GetStream();
 	}
@@ -21,6 +25,18 @@ public class NtegraTcpClient : IDisposable
 			_stream.Dispose();
 			_tcpClient.Dispose();
 		}
+	}
+
+	private void Reconnect()
+	{
+		var oldStream = _stream;
+		var oldClient = _tcpClient;
+
+		_tcpClient = new TcpClient(_address, _port);
+		_stream = _tcpClient.GetStream();
+
+		oldStream.Dispose();
+		oldClient.Dispose();
 	}
 
 	public void Dispose()
@@ -61,7 +77,8 @@ public class NtegraTcpClient : IDisposable
 
 			if (!_stream.CanWrite)
 			{
-				break;
+				Reconnect();
+				continue;
 			}
 
 			await _stream.WriteAsync(sendBuffer.ToArray().AsMemory(0, sendBuffer.Count));
@@ -69,6 +86,10 @@ public class NtegraTcpClient : IDisposable
 			if (response != null)
 			{
 				return response;
+			}
+			else
+			{
+				Reconnect();
 			}
 		} while (attempt < 3);
 
