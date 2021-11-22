@@ -58,6 +58,11 @@ public static class Program
 					Console.WriteLine(version.Language.ToString());
 					Console.WriteLine("Settings stored in flash: " + version.SettingsStoredInFlash);
 
+					var commVersion = await controller.GetCommunicationDeviceVersion();
+					Console.WriteLine(commVersion.FirmwareVersion);
+					Console.WriteLine("Serves 32 byte data: " + commVersion.CanServe32ByteResponses);
+					Console.WriteLine("Serves 8 part troubles: " + commVersion.CanServeTroublesPart8);
+
 					break;
 			}
 		}
