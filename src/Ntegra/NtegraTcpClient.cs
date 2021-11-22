@@ -6,17 +6,19 @@ namespace Ntegra;
 public class NtegraTcpClient : IDisposable
 {
 	private readonly TcpClient _tcpClient;
-	private NetworkStream? _stream;
+	private readonly NetworkStream _stream;
 
 	public NtegraTcpClient(string address, int port)
 	{
 		_tcpClient = new TcpClient(address, port);
+		_stream = _tcpClient.GetStream();
 	}
 
 	protected virtual void Dispose(bool disposing)
 	{
 		if (disposing)
 		{
+			_stream.Dispose();
 			_tcpClient.Dispose();
 		}
 	}
@@ -27,17 +29,9 @@ public class NtegraTcpClient : IDisposable
 		GC.SuppressFinalize(this);
 	}
 
-	private void OpenConnection()
-	{
-		_stream = _tcpClient.GetStream();
-	}
-
-
 	public async Task<byte[]> SendCommand(Command command, params byte[] data)
 	{
-		var receiveBuffer = new byte[100];
 		var attempt = 0;
-		int readBytes = 0;
 		do
 		{
 			attempt++;
@@ -65,25 +59,54 @@ public class NtegraTcpClient : IDisposable
 			sendBuffer.Add(0xFE);
 			sendBuffer.Add(0x0D);
 
-			if (_stream == null || !_tcpClient.Connected)
+			if (!_stream.CanWrite)
 			{
-				OpenConnection();
-			}
+				break;
+			}
+
 			await _stream.WriteAsync(sendBuffer.ToArray().AsMemory(0, sendBuffer.Count));
-			if (_stream.CanRead)			{				readBytes = await _stream.ReadAsync(receiveBuffer, 0, 100);			}
-		} while ((receiveBuffer[0] != receiveBuffer[1] || receiveBuffer[0] != 0xFE) && attempt < 3);
+			var response = await ReceiveResponse();
+			if (response != null)
+			{
+				return response;
+			}
+		} while (attempt < 3);
+
+		throw new InvalidResponseException();
+	}
+
+	private async Task<byte[]?> ReceiveResponse()
+	{
+		var receiveBuffer = new Memory<byte>(new byte[100]);
+		int readBytes;
+
+		if (_stream is null || !_stream.CanRead)
+		{
+			return null;
+		}
+
+		readBytes = await _stream.ReadAsync(receiveBuffer);
+		if (readBytes == 0)
+		{
+			return null;
+		}
+
+		if ((receiveBuffer.Span[0] != receiveBuffer.Span[1]) || receiveBuffer.Span[0] != 0xFE)
+		{
+			return null;
+		}
 
 		var response = new List<byte>();
 		for (var i = 2; i < readBytes - 4; i++)
 		{
-			response.Add(receiveBuffer[i]);
-			if (receiveBuffer[i] == 0xFE && receiveBuffer[i + 1] == 0xF0)
+			response.Add(receiveBuffer.Span[i]);
+			if (receiveBuffer.Span[i] == 0xFE && receiveBuffer.Span[i + 1] == 0xF0)
 			{
 				i++;
 			}
 		}
 
-		var sentChecksum = new Checksum(receiveBuffer[readBytes - 4], receiveBuffer[readBytes - 3]);
+		var sentChecksum = new Checksum(receiveBuffer.Span[readBytes - 4], receiveBuffer.Span[readBytes - 3]);
 		var calculatedChecksum = Checksum.Calculate(response);
 
 		if (sentChecksum != calculatedChecksum)
@@ -93,4 +116,8 @@ public class NtegraTcpClient : IDisposable
 
 		return response.ToArray();
 	}
+}
+
+public class InvalidResponseException : Exception
+{
 }

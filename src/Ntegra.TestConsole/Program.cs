@@ -17,30 +17,47 @@ public static class Program
 		using var client = new NtegraTcpClient(address, port);
 		using var controller = new NtegraController(client, userCode);
 
-
 		while (true)
 		{
-			switch (Console.ReadKey().KeyChar)
+			var key = Console.ReadKey(true);
+			if (key.Key == ConsoleKey.Escape)
+			{
+				break;
+			}
+
+			switch (key.KeyChar)
 			{
 				case '1':
 					await controller.SetOutputState(10, !await controller.GetOutputState(10));
 					break;
 				case '2':
 					await controller.SetOutputState(11, !await controller.GetOutputState(11));
-					break;				case 's':
+					break;
+				case 's':
 					var outputs = await controller.GetOutputsState();
 					PrintOutputs(outputs);
-					break;				case 'z':					var zones = await controller.GetZonesViolations();					PrintOutputs(zones);
+					break;
+				case 'z':
+					var zones = await controller.GetZonesViolations();
+					PrintOutputs(zones);
 					break;
 				case 't':
-					var temp = await controller.GetZoneTemperature(51);					if (!temp.HasValue)
+					var temp = await controller.GetZoneTemperature(51);
+					if (!temp.HasValue)
 					{
-						Console.WriteLine("Temperature undetermined");						break;
-					}
+						Console.WriteLine("Temperature undetermined");
+						break;
+					}
+
 					Console.WriteLine($"Temperature: {temp.Value:F1}°C");
-					break;				case 'v':
+					break;
+				case 'v':
 					var version = await controller.GetIntegraVersion();
-					Console.WriteLine(version.IntegraType.ToString());					Console.WriteLine(version.FirmwareVersion);					Console.WriteLine(version.Language.ToString());					Console.WriteLine("Settings stored in flash: " + version.SettingsStoredInFlash);
+					Console.WriteLine(version.IntegraType.ToString());
+					Console.WriteLine(version.FirmwareVersion);
+					Console.WriteLine(version.Language.ToString());
+					Console.WriteLine("Settings stored in flash: " + version.SettingsStoredInFlash);
+
 					break;
 			}
 		}
