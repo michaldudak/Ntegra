@@ -106,18 +106,18 @@ public class NtegraTcpClient : IDisposable
 		}
 
 		readBytes = await _stream.ReadAsync(receiveBuffer);
-		if (readBytes == 0)
+		if (readBytes < 7)
 		{
 			return null;
 		}
 
-		if ((receiveBuffer.Span[0] != receiveBuffer.Span[1]) || receiveBuffer.Span[0] != 0xFE)
+		if (receiveBuffer.Span[0] != 0xFE ||			receiveBuffer.Span[1] != 0xFE ||			receiveBuffer.Span[readBytes - 2] != 0xFE ||			receiveBuffer.Span[readBytes - 1] != 0x0D)
 		{
 			return null;
 		}
 
 		var response = new List<byte>();
-		for (var i = 2; i < readBytes - 4; i++)
+		for (var i = 2; i < readBytes - 2; i++)
 		{
 			response.Add(receiveBuffer.Span[i]);
 			if (receiveBuffer.Span[i] == 0xFE && receiveBuffer.Span[i + 1] == 0xF0)
@@ -125,16 +125,16 @@ public class NtegraTcpClient : IDisposable
 				i++;
 			}
 		}
+		var receivedChecksum = new Checksum(response[^2], response[^1]);
+		var payload = response.SkipLast(2);
+		var calculatedChecksum = Checksum.Calculate(payload);
 
-		var sentChecksum = new Checksum(receiveBuffer.Span[readBytes - 4], receiveBuffer.Span[readBytes - 3]);
-		var calculatedChecksum = Checksum.Calculate(response);
-
-		if (sentChecksum != calculatedChecksum)
+		if (receivedChecksum != calculatedChecksum)
 		{
 			throw new Exception("Invalid checksum");
 		}
 
-		return response.ToArray();
+		return payload.ToArray();
 	}
 }
 
