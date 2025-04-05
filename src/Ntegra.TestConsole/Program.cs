@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.IO;
 using System.Reflection;
 using Microsoft.Extensions.Configuration;
 
@@ -21,38 +22,58 @@ public static class Program
 
 		while (true)
 		{
-			var key = Console.ReadKey(true);
-			if (key.Key == ConsoleKey.Escape)
+			switch (Console.ReadKey(true).Key)
 			{
-				break;
-			}
-
-			switch (key.KeyChar)
-			{
-				case '1':
+				case ConsoleKey.D1:
+					Console.WriteLine("Output toggle: Office lights");
 					await controller.SetOutputState(11, !await controller.GetOutputState(11));
 					break;
-				case '2':
+				case ConsoleKey.D2:
+					Console.WriteLine("Output toggle: Office ambient light");
 					await controller.SetOutputState(12, !await controller.GetOutputState(12));
 					break;
-				case '3':
+				case ConsoleKey.D3:
+					Console.WriteLine("Output toggle: Corridor light");
 					await controller.SetOutputState(13, !await controller.GetOutputState(13));
 					break;
-				case '5':
+				case ConsoleKey.PageUp:
+					Console.WriteLine("Output toggle: Office blinds up");
+					await controller.SetOutputState(25, !await controller.GetOutputState(25));
+					await controller.SetOutputState(27, !await controller.GetOutputState(27));
+					break;
+				case ConsoleKey.PageDown:
+					Console.WriteLine("Output toggle: Office blinds down");
+					await controller.SetOutputState(26, !await controller.GetOutputState(26));
+					await controller.SetOutputState(28, !await controller.GetOutputState(28));
+					break;
+				case ConsoleKey.Insert:
+					Console.WriteLine("Output toggle: Office left blinds up");
+					await controller.SetOutputState(27, !await controller.GetOutputState(27));
+					break;
+				case ConsoleKey.Delete:
+					Console.WriteLine("Output toggle: Office left blinds down");
+					await controller.SetOutputState(28, !await controller.GetOutputState(28));
+					break;
+				case ConsoleKey.Home:
+					Console.WriteLine("Output toggle: Office right blinds up");
 					await controller.SetOutputState(25, !await controller.GetOutputState(25));
 					break;
-				case '6':
+				case ConsoleKey.End:
+					Console.WriteLine("Output toggle: Office right blinds down");
 					await controller.SetOutputState(26, !await controller.GetOutputState(26));
 					break;
-				case 's':
+				case ConsoleKey.S:
+					Console.WriteLine("Outputs state");
 					var outputs = await controller.GetOutputsState();
 					PrintOutputs(outputs);
 					break;
-				case 'z':
+				case ConsoleKey.Z:
+					Console.WriteLine("Inputs state");
 					var zones = await controller.GetZonesViolations();
 					PrintOutputs(zones);
 					break;
-				case 't':
+				case ConsoleKey.T:
+					Console.WriteLine("Staircase temperature");
 					var temp = await controller.GetZoneTemperature(51);
 					if (!temp.HasValue)
 					{
@@ -62,7 +83,7 @@ public static class Program
 
 					Console.WriteLine($"Temperature: {temp.Value:F1}°C");
 					break;
-				case 'v':
+				case ConsoleKey.V:
 					var version = await controller.GetIntegraVersion();
 					Console.WriteLine(version.IntegraType.ToString());
 					Console.WriteLine(version.FirmwareVersion);
@@ -75,13 +96,15 @@ public static class Program
 					Console.WriteLine("Serves 8 part troubles: " + commVersion.CanServeTroublesPart8);
 
 					break;
-				case 'o':
+				case ConsoleKey.O:
 					for (byte i = 1; i < 128; ++i)
 					{
 						var output = await controller.GetOutputDefinition(i);
-						Console.WriteLine($"{output.Number}: {output.Name} (fn {output.OutputFunction})");
+						Console.WriteLine($"{output.Number,3}: {output.Name} (fn {output.OutputFunction})");
 					}
 					break;
+				case ConsoleKey.Escape:
+					return;
 			}
 		}
 	}
@@ -89,7 +112,7 @@ public static class Program
 	private static IConfiguration SetUpConfiguration(string[] args)
 	{
 		var configurationBuilder = new ConfigurationBuilder();
-		configurationBuilder.SetBasePath(Directory.GetCurrentDirectory());
+		configurationBuilder.SetBasePath(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
 		configurationBuilder.AddJsonFile("appsettings.json", optional: true);
 		configurationBuilder.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
 		configurationBuilder.AddCommandLine(args);
